@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบวิเคราะห์สลากกินแบ่งรัฐบาล</title>
+    <link rel="icon" href="https://img.icons8.com/material-sharp/24/228BE6/graph.png">    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #f3f4f6; }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+        .tab-btn.active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: 600; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th, td { padding: 12px; text-align: center; border: 1px solid #e5e7eb; }
+        th { background-color: #1e3a8a; color: white; position: sticky; top: 0; }
+        tr:nth-child(even) { background-color: #f9fafb; }
+        /* Hide scrollbar for clean horizontal scroll on tabs */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="text-gray-800 flex flex-col min-h-screen">
+
+    <!-- Navbar (Responsive) -->
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-center py-3 gap-3">
+                
+                <!-- Logo -->
+                <div class="flex items-center w-full md:w-auto justify-center md:justify-start">
+                    <i class="fas fa-chart-line text-blue-600 text-2xl mr-3"></i>
+                    <span class="font-bold text-xl text-blue-900">LottoAnalytics</span>
+                </div>
+                
+                <!-- Filters (Responsive wrap) -->
+                <div class="flex flex-wrap items-center justify-center gap-2 w-full md:w-auto">
+                    
+                    <!-- ตัวเลือกช่วงเวลา (Dropdown 1) -->
+                    <div class="flex items-center bg-gray-100 rounded-lg px-2 sm:px-3 py-1 border border-gray-300">
+                        <i class="fas fa-filter text-gray-500 mr-2 text-sm"></i>
+                        <select id="time-filter" onchange="applyFilter()" class="bg-transparent border-none text-blue-700 font-bold focus:outline-none cursor-pointer text-sm sm:text-base">
+                            <option value="1">ย้อนหลัง 1 ปี</option>
+                            <option value="5">ย้อนหลัง 5 ปี</option>
+                            <option value="10">ย้อนหลัง 10 ปี</option>
+                            <option value="15">ย้อนหลัง 15 ปี</option>
+                            <option value="20" selected>ย้อนหลัง 20 ปี</option>
+                        </select>
+                    </div>
+
+                    <!-- ตัวเลือกรายปี (Dropdown 2) -->
+                    <div class="flex items-center bg-gray-100 rounded-lg px-2 sm:px-3 py-1 border border-gray-300">
+                        <i class="fas fa-calendar-alt text-gray-500 mr-2 text-sm"></i>
+                        <select id="specific-year-filter" onchange="applyFilter()" class="bg-transparent border-none text-purple-700 font-bold focus:outline-none cursor-pointer text-sm sm:text-base">
+                            <!-- Options will be populated by JS -->
+                        </select>
+                    </div>
+
+                </div>
+            </div>
+            
+            <!-- Tabs Menu -->
+            <div class="flex space-x-2 overflow-x-auto border-t border-gray-100 mt-1 hide-scrollbar">
+                <button onclick="switchTab('tab-data')" id="btn-tab-data" class="tab-btn active px-4 py-3 whitespace-nowrap text-sm sm:text-base text-gray-600 hover:text-blue-600 transition">ข้อมูลย้อนหลัง</button>
+                <button onclick="switchTab('tab-stats1')" id="btn-tab-stats1" class="tab-btn px-4 py-3 whitespace-nowrap text-sm sm:text-base text-gray-600 hover:text-blue-600 transition">สถิติรางวัลที่ 1</button>
+                <button onclick="switchTab('tab-stats3')" id="btn-tab-stats3" class="tab-btn px-4 py-3 whitespace-nowrap text-sm sm:text-base text-gray-600 hover:text-blue-600 transition">สถิติเลข 3/2 ตัว</button>
+                <button onclick="switchTab('tab-dash')" id="btn-tab-dash" class="tab-btn px-4 py-3 whitespace-nowrap text-sm sm:text-base text-gray-600 hover:text-blue-600 transition">แดชบอร์ดพยากรณ์</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="flex-grow max-w-7xl mx-auto px-2 sm:px-4 py-6 w-full">
+        
+        <!-- Tab 1: ข้อมูลย้อนหลัง -->
+        <div id="tab-data" class="tab-content active">
+            <!-- ฟอร์มเพิ่มข้อมูล -->
+            <div class="bg-white rounded-lg shadow p-4 sm:p-6 mb-6 border-t-4 border-green-500">
+                <h2 class="text-lg font-bold mb-4 text-gray-700 flex items-center">
+                    <i class="fas fa-plus-circle text-green-500 mr-2"></i>อัปเดตผลงวดใหม่ 
+                    <span class="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-normal hidden sm:inline-block">มีระบบป้องกันการกรอกข้อมูลล่วงหน้า</span>
+                </h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                    <div><label class="block text-xs sm:text-sm text-gray-600 mb-1">ปี (พ.ศ.)</label><input type="number" id="in-year" value="2569" class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"></div>
+                    <div><label class="block text-xs sm:text-sm text-gray-600 mb-1">วันที่ (เช่น 1-11)</label><input type="text" id="in-date" placeholder="1-11" class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"></div>
+                    <div><label class="block text-xs sm:text-sm text-gray-600 mb-1">รางวัลที่ 1</label><input type="text" id="in-p1" class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" maxlength="6"></div>
+                    <div><label class="block text-xs sm:text-sm text-gray-600 mb-1">เลขท้าย 2 ตัว</label><input type="text" id="in-b2" class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" maxlength="2"></div>
+                    <div><label class="block text-xs sm:text-sm text-gray-600 mb-1">หน้า 3 ตัว (1)</label><input type="text" id="in-f3-1" class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" maxlength="3"></div>
+                    <div><label class="block text-xs sm:text-sm text-gray-600 mb-1">หน้า 3 ตัว (2)</label><input type="text" id="in-f3-2" class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" maxlength="3"></div>
+                    <div><label class="block text-xs sm:text-sm text-gray-600 mb-1">ท้าย 3 ตัว (1)</label><input type="text" id="in-b3-1" class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" maxlength="3"></div>
+                    <div><label class="block text-xs sm:text-sm text-gray-600 mb-1">ท้าย 3 ตัว (2)</label><input type="text" id="in-b3-2" class="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" maxlength="3"></div>
+                </div>
+                <button onclick="addEntry()" class="mt-4 bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition w-full md:w-auto font-medium shadow-md">บันทึกข้อมูลและคำนวณใหม่</button>
+            </div>
+
+            <!-- ตารางข้อมูล -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
+                    <span class="font-bold text-gray-700">รายการผลสลาก</span>
+                    <span id="record-count" class="text-xs sm:text-sm bg-blue-100 text-blue-800 py-1 px-3 rounded-full font-medium">แสดง 0 งวด</span>
+                </div>
+                <div class="overflow-x-auto max-h-[500px] sm:max-h-[600px]">
+                    <table id="data-table">
+                        <thead>
+                            <tr class="text-xs sm:text-sm">
+                                <th>ปี (พ.ศ.)</th><th>วันที่</th><th>รางวัลที่ 1</th>
+                                <th>หน้า 3 ตัว (1)</th><th>หน้า 3 ตัว (2)</th>
+                                <th>ท้าย 3 ตัว (1)</th><th>ท้าย 3 ตัว (2)</th><th>ท้าย 2 ตัว</th>
+                            </tr>
+                        </thead>
+                        <tbody id="data-tbody" class="text-xs sm:text-sm">
+                            <!-- Data will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: สถิติรางวัลที่ 1 -->
+        <div id="tab-stats1" class="tab-content">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="bg-blue-800 text-white p-3 font-bold text-center text-sm sm:text-base">หน้า 2 ตัว (ร.1)</div>
+                    <div class="max-h-[400px] sm:max-h-[500px] overflow-y-auto"><table class="text-xs sm:text-sm min-w-full"><tbody id="stat-p1-f2"></tbody></table></div>
+                </div>
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="bg-blue-800 text-white p-3 font-bold text-center text-sm sm:text-base">หน้า 3 ตัว (ร.1)</div>
+                    <div class="max-h-[400px] sm:max-h-[500px] overflow-y-auto"><table class="text-xs sm:text-sm min-w-full"><tbody id="stat-p1-f3"></tbody></table></div>
+                </div>
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="bg-blue-800 text-white p-3 font-bold text-center text-sm sm:text-base">ท้าย 2 ตัว (ร.1)</div>
+                    <div class="max-h-[400px] sm:max-h-[500px] overflow-y-auto"><table class="text-xs sm:text-sm min-w-full"><tbody id="stat-p1-b2"></tbody></table></div>
+                </div>
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="bg-blue-800 text-white p-3 font-bold text-center text-sm sm:text-base">ท้าย 3 ตัว (ร.1)</div>
+                    <div class="max-h-[400px] sm:max-h-[500px] overflow-y-auto"><table class="text-xs sm:text-sm min-w-full"><tbody id="stat-p1-b3"></tbody></table></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: สถิติเลขหน้า-ท้าย -->
+        <div id="tab-stats3" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="bg-purple-800 text-white p-3 font-bold text-center text-sm sm:text-base">เลขหน้า 3 ตัว</div>
+                    <div class="max-h-[400px] sm:max-h-[500px] overflow-y-auto"><table class="text-xs sm:text-sm min-w-full"><tbody id="stat-f3"></tbody></table></div>
+                </div>
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="bg-purple-800 text-white p-3 font-bold text-center text-sm sm:text-base">เลขท้าย 3 ตัว</div>
+                    <div class="max-h-[400px] sm:max-h-[500px] overflow-y-auto"><table class="text-xs sm:text-sm min-w-full"><tbody id="stat-b3"></tbody></table></div>
+                </div>
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="bg-purple-800 text-white p-3 font-bold text-center text-sm sm:text-base">เลขท้าย 2 ตัว</div>
+                    <div class="max-h-[400px] sm:max-h-[500px] overflow-y-auto"><table class="text-xs sm:text-sm min-w-full"><tbody id="stat-b2"></tbody></table></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 4: Dashboard -->
+        <div id="tab-dash" class="tab-content">
+            <div class="bg-white rounded-lg shadow p-4 sm:p-6 border-t-4 border-blue-600 relative overflow-hidden">
+                <h2 class="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800 z-10 relative">แดชบอร์ดสรุปสถิติ (Top 3)</h2>
+                <div class="space-y-3 sm:space-y-4 relative z-10">
+                    
+                    <div class="flex flex-col md:flex-row bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-100 items-start md:items-center">
+                        <div class="w-full md:w-1/3 font-bold text-blue-900 text-sm sm:text-base">รางวัลที่ 1: เลขหน้า 2 ตัว</div>
+                        <div class="w-full md:w-1/3 text-xl sm:text-2xl font-black text-blue-600 my-1 md:my-0 md:text-center" id="dash-p1-f2"></div>
+                        <div class="w-full md:w-1/3 text-xs sm:text-sm text-gray-500 md:text-right">แยกเฉพาะ 2 ตัวแรกของรางวัลที่ 1</div>
+                    </div>
+                    
+                    <div class="flex flex-col md:flex-row bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-100 items-start md:items-center">
+                        <div class="w-full md:w-1/3 font-bold text-blue-900 text-sm sm:text-base">รางวัลที่ 1: เลขท้าย 2 ตัว</div>
+                        <div class="w-full md:w-1/3 text-xl sm:text-2xl font-black text-blue-600 my-1 md:my-0 md:text-center" id="dash-p1-b2"></div>
+                        <div class="w-full md:w-1/3 text-xs sm:text-sm text-gray-500 md:text-right">แยกเฉพาะ 2 ตัวหลังของรางวัลที่ 1</div>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row bg-purple-50 rounded-lg p-3 sm:p-4 border border-purple-100 items-start md:items-center">
+                        <div class="w-full md:w-1/3 font-bold text-purple-900 text-sm sm:text-base">รางวัลเลขหน้า 3 ตัว</div>
+                        <div class="w-full md:w-1/3 text-xl sm:text-2xl font-black text-purple-600 my-1 md:my-0 md:text-center" id="dash-f3"></div>
+                        <div class="w-full md:w-1/3 text-xs sm:text-sm text-gray-500 md:text-right">สถิติจากรางวัลเลขหน้า 3 ตัวโดยตรง</div>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row bg-purple-50 rounded-lg p-3 sm:p-4 border border-purple-100 items-start md:items-center">
+                        <div class="w-full md:w-1/3 font-bold text-purple-900 text-sm sm:text-base">รางวัลเลขท้าย 3 ตัว</div>
+                        <div class="w-full md:w-1/3 text-xl sm:text-2xl font-black text-purple-600 my-1 md:my-0 md:text-center" id="dash-b3"></div>
+                        <div class="w-full md:w-1/3 text-xs sm:text-sm text-gray-500 md:text-right">สถิติจากรางวัลเลขท้าย 3 ตัวโดยตรง</div>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row bg-green-50 rounded-lg p-3 sm:p-4 border border-green-100 items-start md:items-center">
+                        <div class="w-full md:w-1/3 font-bold text-green-900 text-sm sm:text-base">รางวัลเลขท้าย 2 ตัว</div>
+                        <div class="w-full md:w-1/3 text-xl sm:text-2xl font-black text-green-600 my-1 md:my-0 md:text-center" id="dash-b2"></div>
+                        <div class="w-full md:w-1/3 text-xs sm:text-sm text-gray-500 md:text-right">สถิติจากรางวัลเลขท้าย 2 ตัวโดยตรง</div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Copyright Footer -->
+    <footer class="mt-auto py-6 text-center text-gray-400 text-sm font-medium">
+        Copyright &copy; A-Odds | 2026
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        // 1. Data Area
+        let masterLotteryData = [{"year": "2569", "date": "1 พฤศจิกายน 2569", "p1": "423224", "f3_1": "300", "f3_2": "950", "b3_1": "393", "b3_2": "804", "b2": "85"}, {"year": "2569", "date": "16 ตุลาคม 2569", "p1": "011781", "f3_1": "392", "f3_2": "402", "b3_1": "171", "b3_2": "255", "b2": "48"}, {"year": "2569", "date": "1 ตุลาคม 2569", "p1": "402701", "f3_1": "791", "f3_2": "912", "b3_1": "058", "b3_2": "396", "b2": "70"}, {"year": "2569", "date": "16 กันยายน 2569", "p1": "730640", "f3_1": "060", "f3_2": "521", "b3_1": "041", "b3_2": "266", "b2": "64"}, {"year": "2569", "date": "1 กันยายน 2569", "p1": "417212", "f3_1": "257", "f3_2": "346", "b3_1": "136", "b3_2": "740", "b2": "04"}, {"year": "2569", "date": "16 สิงหาคม 2569", "p1": "004615", "f3_1": "429", "f3_2": "731", "b3_1": "094", "b3_2": "937", "b2": "53"}, {"year": "2569", "date": "1 สิงหาคม 2569", "p1": "932479", "f3_1": "413", "f3_2": "672", "b3_1": "039", "b3_2": "154", "b2": "69"}, {"year": "2569", "date": "16 กรกฎาคม 2569", "p1": "639214", "f3_1": "683", "f3_2": "709", "b3_1": "427", "b3_2": "746", "b2": "71"}, {"year": "2569", "date": "1 กรกฎาคม 2569", "p1": "751495", "f3_1": "001", "f3_2": "980", "b3_1": "304", "b3_2": "531", "b2": "62"}, {"year": "2569", "date": "16 มิถุนายน 2569", "p1": "287184", "f3_1": "434", "f3_2": "758", "b3_1": "007", "b3_2": "721", "b2": "48"}, {"year": "2569", "date": "1 มิถุนายน 2569", "p1": "173770", "f3_1": "415", "f3_2": "848", "b3_1": "410", "b3_2": "938", "b2": "95"}, {"year": "2569", "date": "16 พฤษภาคม 2569", "p1": "107387", "f3_1": "091", "f3_2": "298", "b3_1": "602", "b3_2": "716", "b2": "08"}, {"year": "2569", "date": "2 พฤษภาคม 2569", "p1": "536077", "f3_1": "267", "f3_2": "318", "b3_1": "065", "b3_2": "153", "b2": "43"}, {"year": "2569", "date": "16 เมษายน 2569", "p1": "309612", "f3_1": "108", "f3_2": "355", "b3_1": "424", "b3_2": "868", "b2": "77"}, {"year": "2569", "date": "1 เมษายน 2569", "p1": "292514", "f3_1": "113", "f3_2": "406", "b3_1": "098", "b3_2": "851", "b2": "47"}, {"year": "2569", "date": "16 มีนาคม 2569", "p1": "833009", "f3_1": "510", "f3_2": "983", "b3_1": "439", "b3_2": "954", "b2": "64"}, {"year": "2569", "date": "1 มีนาคม 2569", "p1": "820866", "f3_1": "054", "f3_2": "479", "b3_1": "068", "b3_2": "837", "b2": "06"}, {"year": "2569", "date": "16 กุมภาพันธ์ 2569", "p1": "340563", "f3_1": "241", "f3_2": "527", "b3_1": "169", "b3_2": "578", "b2": "07"}, {"year": "2569", "date": "1 กุมภาพันธ์ 2569", "p1": "174629", "f3_1": "195", "f3_2": "917", "b3_1": "041", "b3_2": "408", "b2": "48"}, {"year": "2569", "date": "17 มกราคม 2569", "p1": "878972", "f3_1": "299", "f3_2": "815", "b3_1": "363", "b3_2": "662", "b2": "02"}, {"year": "2568", "date": "16 ธันวาคม 2568", "p1": "763895", "f3_1": "176", "f3_2": "431", "b3_1": "014", "b3_2": "449", "b2": "52"}, {"year": "2568", "date": "1 ธันวาคม 2568", "p1": "461252", "f3_1": "389", "f3_2": "655", "b3_1": "137", "b3_2": "995", "b2": "22"}, {"year": "2568", "date": "16 พฤศจิกายน 2568", "p1": "458145", "f3_1": "242", "f3_2": "602", "b3_1": "239", "b3_2": "389", "b2": "37"}, {"year": "2568", "date": "1 พฤศจิกายน 2568", "p1": "345898", "f3_1": "328", "f3_2": "449", "b3_1": "111", "b3_2": "690", "b2": "87"}, {"year": "2568", "date": "16 ตุลาคม 2568", "p1": "059696", "f3_1": "531", "f3_2": "955", "b3_1": "476", "b3_2": "889", "b2": "61"}, {"year": "2568", "date": "1 ตุลาคม 2568", "p1": "876978", "f3_1": "532", "f3_2": "843", "b3_1": "280", "b3_2": "605", "b2": "77"}, {"year": "2568", "date": "16 กันยายน 2568", "p1": "074646", "f3_1": "512", "f3_2": "740", "b3_1": "308", "b3_2": "703", "b2": "58"}, {"year": "2568", "date": "1 กันยายน 2568", "p1": "506356", "f3_1": "012", "f3_2": "131", "b3_1": "022", "b3_2": "209", "b2": "31"}, {"year": "2568", "date": "16 สิงหาคม 2568", "p1": "994865", "f3_1": "247", "f3_2": "602", "b3_1": "834", "b3_2": "989", "b2": "63"}, {"year": "2568", "date": "1 สิงหาคม 2568", "p1": "811852", "f3_1": "142", "f3_2": "525", "b3_1": "512", "b3_2": "891", "b2": "50"}, {"year": "2568", "date": "16 กรกฎาคม 2568", "p1": "245324", "f3_1": "171", "f3_2": "995", "b3_1": "084", "b3_2": "366", "b2": "26"}, {"year": "2568", "date": "1 กรกฎาคม 2568", "p1": "949246", "f3_1": "169", "f3_2": "680", "b3_1": "261", "b3_2": "918", "b2": "91"}, {"year": "2568", "date": "16 มิถุนายน 2568", "p1": "507392", "f3_1": "017", "f3_2": "243", "b3_1": "299", "b3_2": "736", "b2": "06"}, {"year": "2568", "date": "1 มิถุนายน 2568", "p1": "559352", "f3_1": "134", "f3_2": "349", "b3_1": "044", "b3_2": "307", "b2": "20"}, {"year": "2568", "date": "16 พฤษภาคม 2568", "p1": "251309", "f3_1": "109", "f3_2": "231", "b3_1": "631", "b3_2": "965", "b2": "87"}, {"year": "2568", "date": "2 พฤษภาคม 2568", "p1": "213388", "f3_1": "116", "f3_2": "826", "b3_1": "167", "b3_2": "662", "b2": "06"}, {"year": "2568", "date": "16 เมษายน 2568", "p1": "266227", "f3_1": "254", "f3_2": "413", "b3_1": "474", "b3_2": "760", "b2": "85"}, {"year": "2568", "date": "1 เมษายน 2568", "p1": "669687", "f3_1": "635", "f3_2": "760", "b3_1": "180", "b3_2": "666", "b2": "36"}, {"year": "2568", "date": "16 มีนาคม 2568", "p1": "757563", "f3_1": "595", "f3_2": "927", "b3_1": "309", "b3_2": "457", "b2": "32"}, {"year": "2568", "date": "1 มีนาคม 2568", "p1": "818894", "f3_1": "139", "f3_2": "530", "b3_1": "656", "b3_2": "781", "b2": "54"}, {"year": "2568", "date": "16 กุมภาพันธ์ 2568", "p1": "847377", "f3_1": "268", "f3_2": "613", "b3_1": "001", "b3_2": "652", "b2": "50"}, {"year": "2568", "date": "1 กุมภาพันธ์ 2568", "p1": "558700", "f3_1": "285", "f3_2": "418", "b3_1": "685", "b3_2": "824", "b2": "51"}, {"year": "2568", "date": "17 มกราคม 2568", "p1": "807779", "f3_1": "699", "f3_2": "961", "b3_1": "448", "b3_2": "477", "b2": "23"}, {"year": "2568", "date": "2 มกราคม 2568", "p1": "730209", "f3_1": "065", "f3_2": "446", "b3_1": "297", "b3_2": "376", "b2": "51"}, {"year": "2567", "date": "30 ธันวาคม 2567", "p1": "730209", "f3_1": "065", "f3_2": "446", "b3_1": "297", "b3_2": "376", "b2": "51"}, {"year": "2567", "date": "16 ธันวาคม 2567", "p1": "097863", "f3_1": "290", "f3_2": "742", "b3_1": "339", "b3_2": "881", "b2": "21"}, {"year": "2567", "date": "1 ธันวาคม 2567", "p1": "669843", "f3_1": "559", "f3_2": "626", "b3_1": "098", "b3_2": "654", "b2": "61"}, {"year": "2567", "date": "16 พฤศจิกายน 2567", "p1": "187221", "f3_1": "036", "f3_2": "923", "b3_1": "547", "b3_2": "980", "b2": "38"}, {"year": "2567", "date": "1 พฤศจิกายน 2567", "p1": "536044", "f3_1": "174", "f3_2": "225", "b3_1": "063", "b3_2": "231", "b2": "32"}, {"year": "2567", "date": "16 ตุลาคม 2567", "p1": "482962", "f3_1": "561", "f3_2": "648", "b3_1": "493", "b3_2": "919", "b2": "00"}, {"year": "2567", "date": "1 ตุลาคม 2567", "p1": "718665", "f3_1": "053", "f3_2": "812", "b3_1": "079", "b3_2": "566", "b2": "59"}, {"year": "2567", "date": "16 กันยายน 2567", "p1": "608662", "f3_1": "230", "f3_2": "904", "b3_1": "008", "b3_2": "408", "b2": "37"}, {"year": "2567", "date": "1 กันยายน 2567", "p1": "199606", "f3_1": "173", "f3_2": "220", "b3_1": "094", "b3_2": "388", "b2": "94"}, {"year": "2567", "date": "16 สิงหาคม 2567", "p1": "095867", "f3_1": "212", "f3_2": "334", "b3_1": "697", "b3_2": "728", "b2": "28"}, {"year": "2567", "date": "1 สิงหาคม 2567", "p1": "407041", "f3_1": "408", "f3_2": "579", "b3_1": "070", "b3_2": "622", "b2": "46"}, {"year": "2567", "date": "16 กรกฎาคม 2567", "p1": "367336", "f3_1": "011", "f3_2": "331", "b3_1": "421", "b3_2": "618", "b2": "21"}, {"year": "2567", "date": "1 กรกฎาคม 2567", "p1": "434503", "f3_1": "839", "f3_2": "975", "b3_1": "647", "b3_2": "778", "b2": "89"}, {"year": "2567", "date": "16 มิถุนายน 2567", "p1": "518504", "f3_1": "016", "f3_2": "428", "b3_1": "426", "b3_2": "447", "b2": "31"}, {"year": "2567", "date": "1 มิถุนายน 2567", "p1": "530593", "f3_1": "194", "f3_2": "364", "b3_1": "421", "b3_2": "734", "b2": "42"}, {"year": "2567", "date": "16 พฤษภาคม 2567", "p1": "205690", "f3_1": "747", "f3_2": "885", "b3_1": "070", "b3_2": "137", "b2": "60"}, {"year": "2567", "date": "2 พฤษภาคม 2567", "p1": "980116", "f3_1": "104", "f3_2": "763", "b3_1": "634", "b3_2": "833", "b2": "17"}, {"year": "2567", "date": "16 เมษายน 2567", "p1": "943598", "f3_1": "727", "f3_2": "729", "b3_1": "154", "b3_2": "200", "b2": "79"}, {"year": "2567", "date": "1 เมษายน 2567", "p1": "803481", "f3_1": "122", "f3_2": "809", "b3_1": "559", "b3_2": "947", "b2": "90"}, {"year": "2567", "date": "16 มีนาคม 2567", "p1": "997626", "f3_1": "509", "f3_2": "571", "b3_1": "329", "b3_2": "794", "b2": "78"}, {"year": "2567", "date": "1 มีนาคม 2567", "p1": "253603", "f3_1": "900", "f3_2": "975", "b3_1": "382", "b3_2": "703", "b2": "79"}, {"year": "2567", "date": "16 กุมภาพันธ์ 2567", "p1": "941395", "f3_1": "056", "f3_2": "330", "b3_1": "375", "b3_2": "587", "b2": "43"}, {"year": "2567", "date": "1 กุมภาพันธ์ 2567", "p1": "607063", "f3_1": "454", "f3_2": "943", "b3_1": "544", "b3_2": "591", "b2": "09"}, {"year": "2567", "date": "17 มกราคม 2567", "p1": "105979", "f3_1": "429", "f3_2": "931", "b3_1": "196", "b3_2": "635", "b2": "61"}, {"year": "2566", "date": "30 ธันวาคม 2566", "p1": "625544", "f3_1": "600", "f3_2": "648", "b3_1": "882", "b3_2": "456", "b2": "89"}, {"year": "2566", "date": "16 ธันวาคม 2566", "p1": "356757", "f3_1": "058", "f3_2": "410", "b3_1": "584", "b3_2": "964", "b2": "85"}, {"year": "2566", "date": "1 ธันวาคม 2566", "p1": "251097", "f3_1": "265", "f3_2": "055", "b3_1": "280", "b3_2": "092", "b2": "91"}, {"year": "2566", "date": "16 พฤศจิกายน 2566", "p1": "557990", "f3_1": "346", "f3_2": "412", "b3_1": "778", "b3_2": "961", "b2": "14"}, {"year": "2566", "date": "1 พฤศจิกายน 2566", "p1": "743951", "f3_1": "335", "f3_2": "913", "b3_1": "019", "b3_2": "349", "b2": "63"}, {"year": "2566", "date": "16 ตุลาคม 2566", "p1": "931446", "f3_1": "167", "f3_2": "398", "b3_1": "272", "b3_2": "970", "b2": "44"}, {"year": "2566", "date": "1 ตุลาคม 2566", "p1": "727202", "f3_1": "355", "f3_2": "324", "b3_1": "426", "b3_2": "615", "b2": "66"}, {"year": "2566", "date": "16 กันยายน 2566", "p1": "320812", "f3_1": "037", "f3_2": "699", "b3_1": "057", "b3_2": "344", "b2": "46"}, {"year": "2566", "date": "1 กันยายน 2566", "p1": "915478", "f3_1": "521", "f3_2": "596", "b3_1": "692", "b3_2": "291", "b2": "91"}, {"year": "2566", "date": "16 สิงหาคม 2566", "p1": "471782", "f3_1": "431", "f3_2": "739", "b3_1": "737", "b3_2": "742", "b2": "67"}, {"year": "2566", "date": "31 กรกฎาคม 2566", "p1": "260453", "f3_1": "268", "f3_2": "708", "b3_1": "387", "b3_2": "601", "b2": "11"}, {"year": "2566", "date": "16 กรกฎาคม 2566", "p1": "169530", "f3_1": "261", "f3_2": "384", "b3_1": "066", "b3_2": "780", "b2": "62"}, {"year": "2566", "date": "1 กรกฎาคม 2566", "p1": "922605", "f3_1": "281", "f3_2": "867", "b3_1": "491", "b3_2": "947", "b2": "16"}, {"year": "2566", "date": "16 มิถุนายน 2566", "p1": "264872", "f3_1": "519", "f3_2": "628", "b3_1": "202", "b3_2": "874", "b2": "30"}, {"year": "2566", "date": "1 มิถุนายน 2566", "p1": "125272", "f3_1": "000", "f3_2": "681", "b3_1": "386", "b3_2": "971", "b2": "09"}, {"year": "2566", "date": "16 พฤษภาคม 2566", "p1": "132903", "f3_1": "739", "f3_2": "678", "b3_1": "693", "b3_2": "731", "b2": "99"}, {"year": "2566", "date": "2 พฤษภาคม 2566", "p1": "843019", "f3_1": "500", "f3_2": "780", "b3_1": "269", "b3_2": "187", "b2": "65"}, {"year": "2566", "date": "16 เมษายน 2566", "p1": "984906", "f3_1": "670", "f3_2": "678", "b3_1": "797", "b3_2": "551", "b2": "71"}, {"year": "2566", "date": "1 เมษายน 2566", "p1": "087907", "f3_1": "111", "f3_2": "914", "b3_1": "290", "b3_2": "698", "b2": "99"}, {"year": "2566", "date": "16 มีนาคม 2566", "p1": "025873", "f3_1": "420", "f3_2": "800", "b3_1": "355", "b3_2": "544", "b2": "73"}, {"year": "2566", "date": "1 มีนาคม 2566", "p1": "417652", "f3_1": "577", "f3_2": "919", "b3_1": "748", "b3_2": "984", "b2": "55"}, {"year": "2566", "date": "16 กุมภาพันธ์ 2566", "p1": "590417", "f3_1": "195", "f3_2": "664", "b3_1": "377", "b3_2": "523", "b2": "80"}, {"year": "2566", "date": "1 กุมภาพันธ์ 2566", "p1": "297411", "f3_1": "181", "f3_2": "789", "b3_1": "101", "b3_2": "664", "b2": "92"}, {"year": "2566", "date": "17 มกราคม 2566", "p1": "812519", "f3_1": "389", "f3_2": "443", "b3_1": "564", "b3_2": "849", "b2": "47"}, {"year": "2565", "date": "30 ธันวาคม 2565", "p1": "157196", "f3_1": "007", "f3_2": "522", "b3_1": "250", "b3_2": "425", "b2": "58"}, {"year": "2565", "date": "16 ธันวาคม 2565", "p1": "845093", "f3_1": "912", "f3_2": "411", "b3_1": "855", "b3_2": "593", "b2": "14"}, {"year": "2565", "date": "1 ธันวาคม 2565", "p1": "375805", "f3_1": "170", "f3_2": "786", "b3_1": "409", "b3_2": "421", "b2": "08"}, {"year": "2565", "date": "16 พฤศจิกายน 2565", "p1": "121789", "f3_1": "722", "f3_2": "532", "b3_1": "157", "b3_2": "973", "b2": "64"}, {"year": "2565", "date": "1 พฤศจิกายน 2565", "p1": "913106", "f3_1": "722", "f3_2": "839", "b3_1": "343", "b3_2": "922", "b2": "70"}, {"year": "2565", "date": "16 ตุลาคม 2565", "p1": "613106", "f3_1": "037", "f3_2": "158", "b3_1": "606", "b3_2": "799", "b2": "15"}, {"year": "2565", "date": "1 ตุลาคม 2565", "p1": "484669", "f3_1": "206", "f3_2": "996", "b3_1": "194", "b3_2": "278", "b2": "50"}, {"year": "2565", "date": "16 กันยายน 2565", "p1": "943703", "f3_1": "971", "f3_2": "540", "b3_1": "631", "b3_2": "432", "b2": "75"}, {"year": "2565", "date": "1 กันยายน 2565", "p1": "929332", "f3_1": "298", "f3_2": "725", "b3_1": "210", "b3_2": "604", "b2": "83"}, {"year": "2565", "date": "16 สิงหาคม 2565", "p1": "331583", "f3_1": "271", "f3_2": "300", "b3_1": "284", "b3_2": "876", "b2": "42"}, {"year": "2565", "date": "1 สิงหาคม 2565", "p1": "436594", "f3_1": "893", "f3_2": "266", "b3_1": "447", "b3_2": "282", "b2": "14"}, {"year": "2565", "date": "16 กรกฎาคม 2565", "p1": "620405", "f3_1": "159", "f3_2": "834", "b3_1": "061", "b3_2": "279", "b2": "53"}, {"year": "2565", "date": "1 กรกฎาคม 2565", "p1": "981417", "f3_1": "287", "f3_2": "242", "b3_1": "002", "b3_2": "542", "b2": "61"}, {"year": "2565", "date": "16 มิถุนายน 2565", "p1": "361807", "f3_1": "549", "f3_2": "285", "b3_1": "228", "b3_2": "106", "b2": "92"}, {"year": "2565", "date": "1 มิถุนายน 2565", "p1": "319196", "f3_1": "817", "f3_2": "679", "b3_1": "213", "b3_2": "652", "b2": "02"}, {"year": "2565", "date": "16 พฤษภาคม 2565", "p1": "155012", "f3_1": "247", "f3_2": "736", "b3_1": "236", "b3_2": "540", "b2": "06"}, {"year": "2565", "date": "2 พฤษภาคม 2565", "p1": "658642", "f3_1": "778", "f3_2": "518", "b3_1": "041", "b3_2": "325", "b2": "09"}, {"year": "2565", "date": "16 เมษายน 2565", "p1": "395919", "f3_1": "859", "f3_2": "289", "b3_1": "413", "b3_2": "508", "b2": "58"}, {"year": "2565", "date": "1 เมษายน 2565", "p1": "970618", "f3_1": "738", "f3_2": "391", "b3_1": "578", "b3_2": "870", "b2": "10"}, {"year": "2565", "date": "16 มีนาคม 2565", "p1": "737867", "f3_1": "349", "f3_2": "985", "b3_1": "989", "b3_2": "788", "b2": "03"}, {"year": "2565", "date": "1 มีนาคม 2565", "p1": "061905", "f3_1": "236", "f3_2": "834", "b3_1": "234", "b3_2": "691", "b2": "07"}, {"year": "2565", "date": "17 กุมภาพันธ์ 2565", "p1": "098597", "f3_1": "085", "f3_2": "644", "b3_1": "592", "b3_2": "816", "b2": "57"}, {"year": "2565", "date": "1 กุมภาพันธ์ 2565", "p1": "944308", "f3_1": "942", "f3_2": "061", "b3_1": "509", "b3_2": "485", "b2": "30"}, {"year": "2565", "date": "17 มกราคม 2565", "p1": "880159", "f3_1": "731", "f3_2": "786", "b3_1": "529", "b3_2": "119", "b2": "92"}, {"year": "2564", "date": "30 ธันวาคม 2564", "p1": "819068", "f3_1": "591", "f3_2": "979", "b3_1": "419", "b3_2": "547", "b2": "36"}, {"year": "2564", "date": "16 ธันวาคม 2564", "p1": "639235", "f3_1": "097", "f3_2": "629", "b3_1": "476", "b3_2": "522", "b2": "83"}, {"year": "2564", "date": "1 ธันวาคม 2564", "p1": "077258", "f3_1": "739", "f3_2": "740", "b3_1": "401", "b3_2": "485", "b2": "82"}, {"year": "2564", "date": "16 พฤศจิกายน 2564", "p1": "032761", "f3_1": "471", "f3_2": "648", "b3_1": "245", "b3_2": "844", "b2": "57"}, {"year": "2564", "date": "1 พฤศจิกายน 2564", "p1": "045037", "f3_1": "258", "f3_2": "458", "b3_1": "095", "b3_2": "331", "b2": "95"}, {"year": "2564", "date": "16 ตุลาคม 2564", "p1": "386372", "f3_1": "602", "f3_2": "964", "b3_1": "295", "b3_2": "798", "b2": "38"}, {"year": "2564", "date": "1 ตุลาคม 2564", "p1": "578171", "f3_1": "285", "f3_2": "361", "b3_1": "379", "b3_2": "449", "b2": "83"}, {"year": "2564", "date": "16 กันยายน 2564", "p1": "070935", "f3_1": "609", "f3_2": "817", "b3_1": "007", "b3_2": "379", "b2": "90"}, {"year": "2564", "date": "1 กันยายน 2564", "p1": "114475", "f3_1": "278", "f3_2": "302", "b3_1": "123", "b3_2": "458", "b2": "79"}, {"year": "2564", "date": "16 สิงหาคม 2564", "p1": "046750", "f3_1": "421", "f3_2": "666", "b3_1": "160", "b3_2": "355", "b2": "23"}, {"year": "2564", "date": "1 สิงหาคม 2564", "p1": "910261", "f3_1": "103", "f3_2": "307", "b3_1": "004", "b3_2": "785", "b2": "69"}, {"year": "2564", "date": "16 กรกฎาคม 2564", "p1": "556725", "f3_1": "058", "f3_2": "174", "b3_1": "233", "b3_2": "927", "b2": "70"}, {"year": "2564", "date": "1 กรกฎาคม 2564", "p1": "713517", "f3_1": "073", "f3_2": "794", "b3_1": "414", "b3_2": "511", "b2": "29"}, {"year": "2564", "date": "16 มิถุนายน 2564", "p1": "691861", "f3_1": "007", "f3_2": "054", "b3_1": "444", "b3_2": "668", "b2": "17"}, {"year": "2564", "date": "1 มิถุนายน 2564", "p1": "292972", "f3_1": "193", "f3_2": "620", "b3_1": "723", "b3_2": "978", "b2": "45"}, {"year": "2564", "date": "16 พฤษภาคม 2564", "p1": "684579", "f3_1": "615", "f3_2": "843", "b3_1": "258", "b3_2": "276", "b2": "14"}, {"year": "2564", "date": "2 พฤษภาคม 2564", "p1": "501272", "f3_1": "018", "f3_2": "306", "b3_1": "061", "b3_2": "129", "b2": "18"}, {"year": "2564", "date": "16 เมษายน 2564", "p1": "100787", "f3_1": "013", "f3_2": "143", "b3_1": "264", "b3_2": "478", "b2": "56"}, {"year": "2564", "date": "1 เมษายน 2564", "p1": "472270", "f3_1": "283", "f3_2": "755", "b3_1": "393", "b3_2": "577", "b2": "05"}, {"year": "2564", "date": "16 มีนาคม 2564", "p1": "890422", "f3_1": "036", "f3_2": "902", "b3_1": "256", "b3_2": "396", "b2": "19"}, {"year": "2564", "date": "1 มีนาคม 2564", "p1": "835538", "f3_1": "290", "f3_2": "838", "b3_1": "051", "b3_2": "806", "b2": "73"}, {"year": "2564", "date": "16 กุมภาพันธ์ 2564", "p1": "424603", "f3_1": "318", "f3_2": "861", "b3_1": "057", "b3_2": "817", "b2": "39"}, {"year": "2564", "date": "1 กุมภาพันธ์ 2564", "p1": "912307", "f3_1": "248", "f3_2": "605", "b3_1": "282", "b3_2": "651", "b2": "97"}, {"year": "2564", "date": "17 มกราคม 2564", "p1": "384395", "f3_1": "367", "f3_2": "653", "b3_1": "566", "b3_2": "878", "b2": "15"}, {"year": "2563", "date": "30 ธันวาคม 2563", "p1": "803628", "f3_1": "336", "f3_2": "804", "b3_1": "095", "b3_2": "924", "b2": "19"}, {"year": "2563", "date": "16 ธันวาคม 2563", "p1": "201303", "f3_1": "377", "f3_2": "828", "b3_1": "072", "b3_2": "517", "b2": "70"}, {"year": "2563", "date": "1 ธันวาคม 2563", "p1": "100994", "f3_1": "093", "f3_2": "776", "b3_1": "834", "b3_2": "984", "b2": "84"}, {"year": "2563", "date": "16 พฤศจิกายน 2563", "p1": "972661", "f3_1": "368", "f3_2": "741", "b3_1": "208", "b3_2": "255", "b2": "46"}, {"year": "2563", "date": "1 พฤศจิกายน 2563", "p1": "506404", "f3_1": "154", "f3_2": "598", "b3_1": "062", "b3_2": "245", "b2": "40"}, {"year": "2563", "date": "16 ตุลาคม 2563", "p1": "286051", "f3_1": "189", "f3_2": "464", "b3_1": "045", "b3_2": "980", "b2": "38"}, {"year": "2563", "date": "1 ตุลาคม 2563", "p1": "837893", "f3_1": "594", "f3_2": "757", "b3_1": "110", "b3_2": "595", "b2": "59"}, {"year": "2563", "date": "16 กันยายน 2563", "p1": "244083", "f3_1": "127", "f3_2": "220", "b3_1": "623", "b3_2": "853", "b2": "57"}, {"year": "2563", "date": "1 กันยายน 2563", "p1": "999997", "f3_1": "636", "f3_2": "725", "b3_1": "342", "b3_2": "957", "b2": "98"}, {"year": "2563", "date": "16 สิงหาคม 2563", "p1": "945811", "f3_1": "612", "f3_2": "712", "b3_1": "364", "b3_2": "733", "b2": "88"}, {"year": "2563", "date": "1 สิงหาคม 2563", "p1": "569391", "f3_1": "575", "f3_2": "931", "b3_1": "578", "b3_2": "809", "b2": "92"}, {"year": "2563", "date": "16 กรกฎาคม 2563", "p1": "873286", "f3_1": "510", "f3_2": "533", "b3_1": "494", "b3_2": "682", "b2": "53"}, {"year": "2563", "date": "1 กรกฎาคม 2563", "p1": "347258", "f3_1": "095", "f3_2": "362", "b3_1": "094", "b3_2": "307", "b2": "83"}, {"year": "2563", "date": "16 มิถุนายน 2563", "p1": "516967", "f3_1": "876", "f3_2": "882", "b3_1": "565", "b3_2": "625", "b2": "64"}, {"year": "2563", "date": "1 มิถุนายน 2563", "p1": "831567", "f3_1": "264", "f3_2": "489", "b3_1": "562", "b3_2": "582", "b2": "24"}, {"year": "2563", "date": "16 พฤษภาคม 2563", "p1": "051095", "f3_1": "285", "f3_2": "430", "b3_1": "191", "b3_2": "364", "b2": "22"}, {"year": "2563", "date": "16 มีนาคม 2563", "p1": "503446", "f3_1": "258", "f3_2": "726", "b3_1": "404", "b3_2": "661", "b2": "77"}, {"year": "2563", "date": "1 มีนาคม 2563", "p1": "875938", "f3_1": "294", "f3_2": "328", "b3_1": "597", "b3_2": "780", "b2": "98"}, {"year": "2563", "date": "16 กุมภาพันธ์ 2563", "p1": "781403", "f3_1": "515", "f3_2": "952", "b3_1": "030", "b3_2": "918", "b2": "94"}, {"year": "2563", "date": "1 กุมภาพันธ์ 2563", "p1": "589227", "f3_1": "259", "f3_2": "552", "b3_1": "375", "b3_2": "927", "b2": "06"}, {"year": "2563", "date": "17 มกราคม 2563", "p1": "491774", "f3_1": "004", "f3_2": "132", "b3_1": "379", "b3_2": "595", "b2": "68"}, {"year": "2562", "date": "30 ธันวาคม 2562", "p1": "510541", "f3_1": "116", "f3_2": "382", "b3_1": "140", "b3_2": "250", "b2": "81"}, {"year": "2562", "date": "16 ธันวาคม 2562", "p1": "529924", "f3_1": "138", "f3_2": "043", "b3_1": "555", "b3_2": "665", "b2": "97"}, {"year": "2562", "date": "1 ธันวาคม 2562", "p1": "453522", "f3_1": "617", "f3_2": "261", "b3_1": "457", "b3_2": "013", "b2": "81"}, {"year": "2562", "date": "16 พฤศจิกายน 2562", "p1": "017223", "f3_1": "164", "f3_2": "640", "b3_1": "085", "b3_2": "194", "b2": "32"}, {"year": "2562", "date": "1 พฤศจิกายน 2562", "p1": "967375", "f3_1": "323", "f3_2": "806", "b3_1": "021", "b3_2": "206", "b2": "79"}, {"year": "2562", "date": "16 ตุลาคม 2562", "p1": "812564", "f3_1": "255", "f3_2": "625", "b3_1": "132", "b3_2": "598", "b2": "15"}, {"year": "2562", "date": "1 ตุลาคม 2562", "p1": "691197", "f3_1": "920", "f3_2": "816", "b3_1": "797", "b3_2": "606", "b2": "59"}, {"year": "2562", "date": "16 กันยายน 2562", "p1": "340388", "f3_1": "947", "f3_2": "733", "b3_1": "925", "b3_2": "939", "b2": "85"}, {"year": "2562", "date": "1 กันยายน 2562", "p1": "798787", "f3_1": "210", "f3_2": "847", "b3_1": "274", "b3_2": "439", "b2": "20"}, {"year": "2562", "date": "16 สิงหาคม 2562", "p1": "775476", "f3_1": "149", "f3_2": "580", "b3_1": "563", "b3_2": "576", "b2": "89"}, {"year": "2562", "date": "1 สิงหาคม 2562", "p1": "387006", "f3_1": "135", "f3_2": "983", "b3_1": "562", "b3_2": "795", "b2": "58"}, {"year": "2562", "date": "15 กรกฎาคม 2562", "p1": "369765", "f3_1": "901", "f3_2": "355", "b3_1": "556", "b3_2": "113", "b2": "88"}, {"year": "2562", "date": "1 กรกฎาคม 2562", "p1": "943647", "f3_1": "239", "f3_2": "864", "b3_1": "006", "b3_2": "375", "b2": "86"}, {"year": "2562", "date": "16 มิถุนายน 2562", "p1": "174055", "f3_1": "884", "f3_2": "625", "b3_1": "127", "b3_2": "800", "b2": "29"}, {"year": "2562", "date": "1 มิถุนายน 2562", "p1": "516461", "f3_1": "589", "f3_2": "713", "b3_1": "215", "b3_2": "560", "b2": "46"}, {"year": "2562", "date": "16 พฤษภาคม 2562", "p1": "962526", "f3_1": "669", "f3_2": "949", "b3_1": "018", "b3_2": "828", "b2": "71"}, {"year": "2562", "date": "2 พฤษภาคม 2562", "p1": "061324", "f3_1": "043", "f3_2": "476", "b3_1": "699", "b3_2": "374", "b2": "25"}, {"year": "2562", "date": "16 เมษายน 2562", "p1": "570331", "f3_1": "512", "f3_2": "930", "b3_1": "968", "b3_2": "966", "b2": "23"}, {"year": "2562", "date": "1 เมษายน 2562", "p1": "109767", "f3_1": "888", "f3_2": "959", "b3_1": "403", "b3_2": "975", "b2": "52"}, {"year": "2562", "date": "16 มีนาคม 2562", "p1": "724628", "f3_1": "148", "f3_2": "883", "b3_1": "154", "b3_2": "877", "b2": "64"}, {"year": "2562", "date": "1 มีนาคม 2562", "p1": "345650", "f3_1": "137", "f3_2": "882", "b3_1": "830", "b3_2": "112", "b2": "65"}, {"year": "2562", "date": "16 กุมภาพันธ์ 2562", "p1": "074824", "f3_1": "881", "f3_2": "910", "b3_1": "612", "b3_2": "879", "b2": "56"}, {"year": "2562", "date": "1 กุมภาพันธ์ 2562", "p1": "967134", "f3_1": "643", "f3_2": "779", "b3_1": "197", "b3_2": "948", "b2": "04"}, {"year": "2562", "date": "17 มกราคม 2562", "p1": "197079", "f3_1": "206", "f3_2": "412", "b3_1": "660", "b3_2": "812", "b2": "65"}, {"year": "2561", "date": "30 ธันวาคม 2561", "p1": "735867", "f3_1": "031", "f3_2": "913", "b3_1": "701", "b3_2": "884", "b2": "02"}, {"year": "2561", "date": "16 ธันวาคม 2561", "p1": "356564", "f3_1": "297", "f3_2": "369", "b3_1": "480", "b3_2": "948", "b2": "62"}, {"year": "2561", "date": "1 ธันวาคม 2561", "p1": "021840", "f3_1": "045", "f3_2": "307", "b3_1": "561", "b3_2": "988", "b2": "67"}, {"year": "2561", "date": "16 พฤศจิกายน 2561", "p1": "989903", "f3_1": "471", "f3_2": "930", "b3_1": "140", "b3_2": "876", "b2": "16"}, {"year": "2561", "date": "1 พฤศจิกายน 2561", "p1": "149840", "f3_1": "384", "f3_2": "576", "b3_1": "046", "b3_2": "509", "b2": "58"}, {"year": "2561", "date": "16 ตุลาคม 2561", "p1": "200515", "f3_1": "186", "f3_2": "392", "b3_1": "192", "b3_2": "212", "b2": "93"}, {"year": "2561", "date": "1 ตุลาคม 2561", "p1": "452643", "f3_1": "594", "f3_2": "726", "b3_1": "561", "b3_2": "810", "b2": "99"}, {"year": "2561", "date": "16 กันยายน 2561", "p1": "149760", "f3_1": "323", "f3_2": "539", "b3_1": "155", "b3_2": "297", "b2": "79"}, {"year": "2561", "date": "1 กันยายน 2561", "p1": "734510", "f3_1": "464", "f3_2": "512", "b3_1": "097", "b3_2": "202", "b2": "26"}, {"year": "2561", "date": "16 สิงหาคม 2561", "p1": "586117", "f3_1": "340", "f3_2": "670", "b3_1": "591", "b3_2": "815", "b2": "10"}, {"year": "2561", "date": "1 สิงหาคม 2561", "p1": "386602", "f3_1": "832", "f3_2": "903", "b3_1": "549", "b3_2": "726", "b2": "78"}, {"year": "2561", "date": "16 กรกฎาคม 2561", "p1": "596324", "f3_1": "403", "f3_2": "530", "b3_1": "138", "b3_2": "362", "b2": "27"}, {"year": "2561", "date": "1 กรกฎาคม 2561", "p1": "963623", "f3_1": "429", "f3_2": "901", "b3_1": "210", "b3_2": "217", "b2": "83"}, {"year": "2561", "date": "16 มิถุนายน 2561", "p1": "223131", "f3_1": "432", "f3_2": "507", "b3_1": "132", "b3_2": "868", "b2": "46"}, {"year": "2561", "date": "1 มิถุนายน 2561", "p1": "988117", "f3_1": "310", "f3_2": "553", "b3_1": "248", "b3_2": "650", "b2": "95"}, {"year": "2561", "date": "16 พฤษภาคม 2561", "p1": "075629", "f3_1": "130", "f3_2": "357", "b3_1": "047", "b3_2": "506", "b2": "20"}, {"year": "2561", "date": "2 พฤษภาคม 2561", "p1": "248038", "f3_1": "527", "f3_2": "980", "b3_1": "225", "b3_2": "602", "b2": "85"}, {"year": "2561", "date": "16 เมษายน 2561", "p1": "739229", "f3_1": "273", "f3_2": "654", "b3_1": "076", "b3_2": "526", "b2": "60"}, {"year": "2561", "date": "1 เมษายน 2561", "p1": "412073", "f3_1": "131", "f3_2": "787", "b3_1": "638", "b3_2": "924", "b2": "85"}, {"year": "2561", "date": "16 มีนาคม 2561", "p1": "218559", "f3_1": "064", "f3_2": "720", "b3_1": "205", "b3_2": "489", "b2": "82"}, {"year": "2561", "date": "2 มีนาคม 2561", "p1": "759415", "f3_1": "318", "f3_2": "870", "b3_1": "589", "b3_2": "723", "b2": "29"}, {"year": "2561", "date": "16 กุมภาพันธ์ 2561", "p1": "309915", "f3_1": "007", "f3_2": "388", "b3_1": "230", "b3_2": "748", "b2": "39"}, {"year": "2561", "date": "1 กุมภาพันธ์ 2561", "p1": "026853", "f3_1": "106", "f3_2": "947", "b3_1": "181", "b3_2": "519", "b2": "31"}, {"year": "2561", "date": "17 มกราคม 2561", "p1": "203823", "f3_1": "624", "f3_2": "799", "b3_1": "236", "b3_2": "397", "b2": "50"}, {"year": "2560", "date": "30 ธันวาคม 2560", "p1": "911234", "f3_1": "373", "f3_2": "495", "b3_1": "504", "b3_2": "953", "b2": "98"}, {"year": "2560", "date": "16 ธันวาคม 2560", "p1": "955596", "f3_1": "616", "f3_2": "836", "b3_1": "290", "b3_2": "938", "b2": "89"}, {"year": "2560", "date": "1 ธันวาคม 2560", "p1": "451005", "f3_1": "303", "f3_2": "626", "b3_1": "257", "b3_2": "601", "b2": "33"}, {"year": "2560", "date": "16 พฤศจิกายน 2560", "p1": "292391", "f3_1": "831", "f3_2": "961", "b3_1": "477", "b3_2": "628", "b2": "98"}, {"year": "2560", "date": "1 พฤศจิกายน 2560", "p1": "533726", "f3_1": "165", "f3_2": "425", "b3_1": "036", "b3_2": "485", "b2": "85"}, {"year": "2560", "date": "16 ตุลาคม 2560", "p1": "413494", "f3_1": "180", "f3_2": "971", "b3_1": "128", "b3_2": "287", "b2": "86"}, {"year": "2560", "date": "1 ตุลาคม 2560", "p1": "880714", "f3_1": "611", "f3_2": "726", "b3_1": "462", "b3_2": "952", "b2": "52"}, {"year": "2560", "date": "16 กันยายน 2560", "p1": "170143", "f3_1": "172", "f3_2": "647", "b3_1": "340", "b3_2": "388", "b2": "71"}, {"year": "2560", "date": "1 กันยายน 2560", "p1": "143224", "f3_1": "345", "f3_2": "679", "b3_1": "195", "b3_2": "278", "b2": "65"}, {"year": "2560", "date": "16 สิงหาคม 2560", "p1": "715431", "f3_1": "115", "f3_2": "302", "b3_1": "253", "b3_2": "945", "b2": "37"}, {"year": "2560", "date": "1 สิงหาคม 2560", "p1": "756519", "f3_1": "061", "f3_2": "386", "b3_1": "787", "b3_2": "989", "b2": "36"}, {"year": "2560", "date": "16 กรกฎาคม 2560", "p1": "820327", "f3_1": "584", "f3_2": "835", "b3_1": "390", "b3_2": "823", "b2": "87"}, {"year": "2560", "date": "1 กรกฎาคม 2560", "p1": "112360", "f3_1": "226", "f3_2": "489", "b3_1": "005", "b3_2": "688", "b2": "26"}, {"year": "2560", "date": "16 มิถุนายน 2560", "p1": "943142", "f3_1": "626", "f3_2": "878", "b3_1": "373", "b3_2": "740", "b2": "47"}, {"year": "2560", "date": "1 มิถุนายน 2560", "p1": "053630", "f3_1": "121", "f3_2": "218", "b3_1": "581", "b3_2": "881", "b2": "61"}, {"year": "2560", "date": "16 พฤษภาคม 2560", "p1": "454891", "f3_1": "008", "f3_2": "396", "b3_1": "490", "b3_2": "603", "b2": "53"}, {"year": "2560", "date": "2 พฤษภาคม 2560", "p1": "008656", "f3_1": "573", "f3_2": "949", "b3_1": "773", "b3_2": "923", "b2": "35"}, {"year": "2560", "date": "16 เมษายน 2560", "p1": "816729", "f3_1": "766", "f3_2": "973", "b3_1": "241", "b3_2": "807", "b2": "40"}, {"year": "2560", "date": "1 เมษายน 2560", "p1": "392785", "f3_1": "020", "f3_2": "057", "b3_1": "500", "b3_2": "709", "b2": "80"}, {"year": "2560", "date": "16 มีนาคม 2560", "p1": "273863", "f3_1": "324", "f3_2": "918", "b3_1": "694", "b3_2": "941", "b2": "92"}, {"year": "2560", "date": "1 มีนาคม 2560", "p1": "978453", "f3_1": "450", "f3_2": "560", "b3_1": "052", "b3_2": "577", "b2": "78"}, {"year": "2560", "date": "16 กุมภาพันธ์ 2560", "p1": "229116", "f3_1": "128", "f3_2": "464", "b3_1": "375", "b3_2": "953", "b2": "14"}, {"year": "2560", "date": "1 กุมภาพันธ์ 2560", "p1": "054672", "f3_1": "066", "f3_2": "807", "b3_1": "426", "b3_2": "628", "b2": "42"}, {"year": "2560", "date": "17 มกราคม 2560", "p1": "145157", "f3_1": "511", "f3_2": "663", "b3_1": "516", "b3_2": "836", "b2": "25"}, {"year": "2559", "date": "30 ธันวาคม 2559", "p1": "377712", "f3_1": "304", "f3_2": "890", "b3_1": "477", "b3_2": "769", "b2": "46"}, {"year": "2559", "date": "16 ธันวาคม 2559", "p1": "435286", "f3_1": "366", "f3_2": "596", "b3_1": "199", "b3_2": "716", "b2": "35"}, {"year": "2559", "date": "1 ธันวาคม 2559", "p1": "086069", "f3_1": "513", "f3_2": "873", "b3_1": "148", "b3_2": "450", "b2": "77"}, {"year": "2559", "date": "16 พฤศจิกายน 2559", "p1": "858383", "f3_1": "040", "f3_2": "682", "b3_1": "558", "b3_2": "570", "b2": "44"}, {"year": "2559", "date": "1 พฤศจิกายน 2559", "p1": "785438", "f3_1": "824", "f3_2": "976", "b3_1": "038", "b3_2": "752", "b2": "86"}, {"year": "2559", "date": "16 ตุลาคม 2559", "p1": "571947", "f3_1": "692", "f3_2": "885", "b3_1": "032", "b3_2": "587", "b2": "98"}, {"year": "2559", "date": "1 ตุลาคม 2559", "p1": "887102", "f3_1": "194", "f3_2": "280", "b3_1": "017", "b3_2": "458", "b2": "33"}, {"year": "2559", "date": "16 กันยายน 2559", "p1": "240650", "f3_1": "493", "f3_2": "583", "b3_1": "043", "b3_2": "160", "b2": "42"}, {"year": "2559", "date": "1 กันยายน 2559", "p1": "638684", "f3_1": "334", "f3_2": "335", "b3_1": "630", "b3_2": "669", "b2": "62"}, {"year": "2559", "date": "16 สิงหาคม 2559", "p1": "254004", "f3_1": "366", "f3_2": "966", "b3_1": "596", "b3_2": "631", "b2": "33"}, {"year": "2559", "date": "1 สิงหาคม 2559", "p1": "272932", "f3_1": "538", "f3_2": "983", "b3_1": "472", "b3_2": "871", "b2": "57"}, {"year": "2559", "date": "16 กรกฎาคม 2559", "p1": "449764", "f3_1": "552", "f3_2": "734", "b3_1": "158", "b3_2": "925", "b2": "55"}, {"year": "2559", "date": "1 กรกฎาคม 2559", "p1": "082460", "f3_1": "169", "f3_2": "609", "b3_1": "173", "b3_2": "302", "b2": "53"}, {"year": "2559", "date": "16 มิถุนายน 2559", "p1": "073816", "f3_1": "251", "f3_2": "804", "b3_1": "321", "b3_2": "749", "b2": "79"}, {"year": "2559", "date": "1 มิถุนายน 2559", "p1": "511825", "f3_1": "111", "f3_2": "775", "b3_1": "880", "b3_2": "937", "b2": "14"}, {"year": "2559", "date": "16 พฤษภาคม 2559", "p1": "141737", "f3_1": "382", "f3_2": "975", "b3_1": "087", "b3_2": "268", "b2": "98"}, {"year": "2559", "date": "2 พฤษภาคม 2559", "p1": "399459", "f3_1": "238", "f3_2": "403", "b3_1": "046", "b3_2": "671", "b2": "02"}, {"year": "2559", "date": "16 เมษายน 2559", "p1": "221609", "f3_1": "008", "f3_2": "228", "b3_1": "507", "b3_2": "523", "b2": "87"}, {"year": "2559", "date": "1 เมษายน 2559", "p1": "066720", "f3_1": "390", "f3_2": "546", "b3_1": "285", "b3_2": "852", "b2": "92"}, {"year": "2559", "date": "16 มีนาคม 2559", "p1": "134918", "f3_1": "855", "f3_2": "877", "b3_1": "004", "b3_2": "973", "b2": "32"}, {"year": "2559", "date": "1 มีนาคม 2559", "p1": "439686", "f3_1": "426", "f3_2": "530", "b3_1": "155", "b3_2": "743", "b2": "06"}, {"year": "2559", "date": "16 กุมภาพันธ์ 2559", "p1": "356364", "f3_1": "312", "f3_2": "699", "b3_1": "309", "b3_2": "535", "b2": "98"}, {"year": "2559", "date": "1 กุมภาพันธ์ 2559", "p1": "927800", "f3_1": "625", "f3_2": "999", "b3_1": "054", "b3_2": "076", "b2": "09"}, {"year": "2559", "date": "17 มกราคม 2559", "p1": "304371", "f3_1": "031", "f3_2": "532", "b3_1": "743", "b3_2": "786", "b2": "50"}, {"year": "2558", "date": "30 ธันวาคม 2558", "p1": "526184", "f3_1": "081", "f3_2": "620", "b3_1": "270", "b3_2": "569", "b2": "66"}, {"year": "2558", "date": "16 ธันวาคม 2558", "p1": "251502", "f3_1": "314", "f3_2": "713", "b3_1": "022", "b3_2": "291", "b2": "94"}, {"year": "2558", "date": "1 ธันวาคม 2558", "p1": "094597", "f3_1": "321", "f3_2": "957", "b3_1": "249", "b3_2": "791", "b2": "81"}, {"year": "2558", "date": "16 พฤศจิกายน 2558", "p1": "795327", "f3_1": "141", "f3_2": "473", "b3_1": "312", "b3_2": "834", "b2": "30"}, {"year": "2558", "date": "1 พฤศจิกายน 2558", "p1": "834519", "f3_1": "339", "f3_2": "730", "b3_1": "194", "b3_2": "771", "b2": "36"}, {"year": "2558", "date": "16 ตุลาคม 2558", "p1": "887077", "f3_1": "162", "f3_2": "656", "b3_1": "456", "b3_2": "653", "b2": "06"}, {"year": "2558", "date": "1 ตุลาคม 2558", "p1": "595990", "f3_1": "504", "f3_2": "884", "b3_1": "449", "b3_2": "628", "b2": "59"}, {"year": "2558", "date": "16 กันยายน 2558", "p1": "208205", "f3_1": "442", "f3_2": "610", "b3_1": "131", "b3_2": "870", "b2": "22"}, {"year": "2558", "date": "1 กันยายน 2558", "p1": "022310", "f3_1": "586", "f3_2": "653", "b3_1": "080", "b3_2": "575", "b2": "62"}, {"year": "2558", "date": "16 สิงหาคม 2558", "p1": "033316", "f3_1": "225", "f3_2": "522", "b3_1": "335", "b3_2": "959", "b2": "32"}, {"year": "2558", "date": "1 สิงหาคม 2558", "p1": "371556", "f3_1": "196", "f3_2": "315", "b3_1": "619", "b3_2": "936", "b2": "25"}, {"year": "2558", "date": "16 กรกฎาคม 2558", "p1": "388881", "f3_1": "426", "f3_2": "448", "b3_1": "389", "b3_2": "838", "b2": "65"}, {"year": "2558", "date": "1 กรกฎาคม 2558", "p1": "581541", "f3_1": "192", "f3_2": "454", "b3_1": "129", "b3_2": "180", "b2": "38"}, {"year": "2558", "date": "16 มิถุนายน 2558", "p1": "093305", "f3_1": "203", "f3_2": "644", "b3_1": "190", "b3_2": "905", "b2": "47"}, {"year": "2558", "date": "1 มิถุนายน 2558", "p1": "388912", "f3_1": "119", "f3_2": "402", "b3_1": "317", "b3_2": "802", "b2": "84"}, {"year": "2558", "date": "16 พฤษภาคม 2558", "p1": "501126", "f3_1": "381", "f3_2": "428", "b3_1": "183", "b3_2": "249", "b2": "30"}, {"year": "2558", "date": "2 พฤษภาคม 2558", "p1": "563065", "f3_1": "189", "f3_2": "416", "b3_1": "086", "b3_2": "442", "b2": "15"}, {"year": "2558", "date": "16 เมษายน 2558", "p1": "726350", "f3_1": "165", "f3_2": "273", "b3_1": "060", "b3_2": "775", "b2": "73"}, {"year": "2558", "date": "1 เมษายน 2558", "p1": "643793", "f3_1": "233", "f3_2": "848", "b3_1": "411", "b3_2": "993", "b2": "94"}, {"year": "2558", "date": "16 มีนาคม 2558", "p1": "594247", "f3_1": "038", "f3_2": "959", "b3_1": "057", "b3_2": "230", "b2": "86"}, {"year": "2558", "date": "1 มีนาคม 2558", "p1": "498303", "f3_1": "203", "f3_2": "955", "b3_1": "384", "b3_2": "562", "b2": "09"}, {"year": "2558", "date": "16 กุมภาพันธ์ 2558", "p1": "204487", "f3_1": "306", "f3_2": "577", "b3_1": "281", "b3_2": "908", "b2": "21"}, {"year": "2558", "date": "1 กุมภาพันธ์ 2558", "p1": "948148", "f3_1": "057", "f3_2": "505", "b3_1": "321", "b3_2": "859", "b2": "04"}, {"year": "2558", "date": "17 มกราคม 2558", "p1": "501572", "f3_1": "622", "f3_2": "651", "b3_1": "488", "b3_2": "849", "b2": "02"}, {"year": "2557", "date": "30 ธันวาคม 2557", "p1": "252556", "f3_1": "002", "f3_2": "141", "b3_1": "025", "b3_2": "626", "b2": "71"}, {"year": "2557", "date": "16 ธันวาคม 2557", "p1": "530404", "f3_1": "531", "f3_2": "778", "b3_1": "024", "b3_2": "100", "b2": "40"}, {"year": "2557", "date": "1 ธันวาคม 2557", "p1": "890453", "f3_1": "148", "f3_2": "734", "b3_1": "220", "b3_2": "959", "b2": "30"}, {"year": "2557", "date": "16 พฤศจิกายน 2557", "p1": "557850", "f3_1": "074", "f3_2": "173", "b3_1": "260", "b3_2": "758", "b2": "11"}, {"year": "2557", "date": "1 พฤศจิกายน 2557", "p1": "705832", "f3_1": "080", "f3_2": "319", "b3_1": "651", "b3_2": "714", "b2": "79"}, {"year": "2557", "date": "16 ตุลาคม 2557", "p1": "194098", "f3_1": "103", "f3_2": "629", "b3_1": "314", "b3_2": "902", "b2": "39"}, {"year": "2557", "date": "1 ตุลาคม 2557", "p1": "548123", "f3_1": "472", "f3_2": "848", "b3_1": "233", "b3_2": "632", "b2": "05"}, {"year": "2557", "date": "16 กันยายน 2557", "p1": "252277", "f3_1": "449", "f3_2": "887", "b3_1": "080", "b3_2": "748", "b2": "57"}, {"year": "2557", "date": "1 กันยายน 2557", "p1": "776274", "f3_1": "281", "f3_2": "430", "b3_1": "447", "b3_2": "452", "b2": "02"}, {"year": "2557", "date": "16 สิงหาคม 2557", "p1": "670935", "f3_1": "634", "f3_2": "974", "b3_1": "488", "b3_2": "862", "b2": "90"}, {"year": "2557", "date": "1 สิงหาคม 2557", "p1": "455851", "f3_1": "074", "f3_2": "142", "b3_1": "298", "b3_2": "332", "b2": "53"}, {"year": "2557", "date": "16 กรกฎาคม 2557", "p1": "184311", "f3_1": "377", "f3_2": "550", "b3_1": "364", "b3_2": "651", "b2": "04"}, {"year": "2557", "date": "1 กรกฎาคม 2557", "p1": "278788", "f3_1": "285", "f3_2": "563", "b3_1": "129", "b3_2": "727", "b2": "02"}, {"year": "2557", "date": "16 มิถุนายน 2557", "p1": "859150", "f3_1": "495", "f3_2": "904", "b3_1": "339", "b3_2": "358", "b2": "68"}, {"year": "2557", "date": "1 มิถุนายน 2557", "p1": "973121", "f3_1": "291", "f3_2": "858", "b3_1": "228", "b3_2": "416", "b2": "50"}, {"year": "2557", "date": "16 พฤษภาคม 2557", "p1": "260386", "f3_1": "026", "f3_2": "122", "b3_1": "020", "b3_2": "848", "b2": "12"}, {"year": "2557", "date": "2 พฤษภาคม 2557", "p1": "508534", "f3_1": "249", "f3_2": "730", "b3_1": "454", "b3_2": "500", "b2": "25"}, {"year": "2557", "date": "16 เมษายน 2557", "p1": "581691", "f3_1": "118", "f3_2": "259", "b3_1": "201", "b3_2": "893", "b2": "30"}, {"year": "2557", "date": "1 เมษายน 2557", "p1": "040356", "f3_1": "629", "f3_2": "764", "b3_1": "067", "b3_2": "136", "b2": "64"}, {"year": "2557", "date": "16 มีนาคม 2557", "p1": "736467", "f3_1": "260", "f3_2": "349", "b3_1": "402", "b3_2": "959", "b2": "09"}, {"year": "2557", "date": "1 มีนาคม 2557", "p1": "281501", "f3_1": "443", "f3_2": "690", "b3_1": "194", "b3_2": "541", "b2": "29"}, {"year": "2557", "date": "16 กุมภาพันธ์ 2557", "p1": "104190", "f3_1": "053", "f3_2": "640", "b3_1": "525", "b3_2": "713", "b2": "17"}, {"year": "2557", "date": "1 กุมภาพันธ์ 2557", "p1": "952097", "f3_1": "314", "f3_2": "440", "b3_1": "038", "b3_2": "710", "b2": "72"}, {"year": "2557", "date": "17 มกราคม 2557", "p1": "972581", "f3_1": "069", "f3_2": "188", "b3_1": "371", "b3_2": "824", "b2": "48"}, {"year": "2556", "date": "30 ธันวาคม 2556", "p1": "927633", "f3_1": "919", "f3_2": "994", "b3_1": "413", "b3_2": "904", "b2": "71"}, {"year": "2556", "date": "16 ธันวาคม 2556", "p1": "578708", "f3_1": "990", "f3_2": "091", "b3_1": "959", "b3_2": "066", "b2": "37"}, {"year": "2556", "date": "1 ธันวาคม 2556", "p1": "601459", "f3_1": "282", "f3_2": "308", "b3_1": "590", "b3_2": "085", "b2": "49"}, {"year": "2556", "date": "16 พฤศจิกายน 2556", "p1": "885880", "f3_1": "298", "f3_2": "699", "b3_1": "568", "b3_2": "377", "b2": "59"}, {"year": "2556", "date": "1 พฤศจิกายน 2556", "p1": "863014", "f3_1": "492", "f3_2": "148", "b3_1": "636", "b3_2": "818", "b2": "88"}, {"year": "2556", "date": "16 ตุลาคม 2556", "p1": "877211", "f3_1": "573", "f3_2": "790", "b3_1": "395", "b3_2": "978", "b2": "58"}, {"year": "2556", "date": "1 ตุลาคม 2556", "p1": "912856", "f3_1": "227", "f3_2": "204", "b3_1": "859", "b3_2": "159", "b2": "43"}, {"year": "2556", "date": "16 กันยายน 2556", "p1": "074309", "f3_1": "603", "f3_2": "447", "b3_1": "020", "b3_2": "053", "b2": "93"}, {"year": "2556", "date": "1 กันยายน 2556", "p1": "218082", "f3_1": "194", "f3_2": "951", "b3_1": "720", "b3_2": "238", "b2": "89"}, {"year": "2556", "date": "16 สิงหาคม 2556", "p1": "028678", "f3_1": "845", "f3_2": "622", "b3_1": "436", "b3_2": "892", "b2": "84"}, {"year": "2556", "date": "1 สิงหาคม 2556", "p1": "239423", "f3_1": "896", "f3_2": "727", "b3_1": "836", "b3_2": "896", "b2": "00"}, {"year": "2556", "date": "16 กรกฎาคม 2556", "p1": "660519", "f3_1": "908", "f3_2": "369", "b3_1": "420", "b3_2": "203", "b2": "12"}, {"year": "2556", "date": "1 กรกฎาคม 2556", "p1": "494251", "f3_1": "842", "f3_2": "324", "b3_1": "102", "b3_2": "243", "b2": "31"}, {"year": "2556", "date": "16 มิถุนายน 2556", "p1": "675592", "f3_1": "523", "f3_2": "775", "b3_1": "959", "b3_2": "154", "b2": "95"}, {"year": "2556", "date": "1 มิถุนายน 2556", "p1": "870742", "f3_1": "318", "f3_2": "149", "b3_1": "509", "b3_2": "160", "b2": "23"}, {"year": "2556", "date": "16 พฤษภาคม 2556", "p1": "456068", "f3_1": "625", "f3_2": "428", "b3_1": "964", "b3_2": "581", "b2": "77"}, {"year": "2556", "date": "2 พฤษภาคม 2556", "p1": "344405", "f3_1": "032", "f3_2": "105", "b3_1": "299", "b3_2": "207", "b2": "42"}, {"year": "2556", "date": "16 เมษายน 2556", "p1": "671244", "f3_1": "267", "f3_2": "766", "b3_1": "106", "b3_2": "462", "b2": "02"}, {"year": "2556", "date": "1 เมษายน 2556", "p1": "391090", "f3_1": "974", "f3_2": "217", "b3_1": "455", "b3_2": "659", "b2": "82"}, {"year": "2556", "date": "16 มีนาคม 2556", "p1": "645623", "f3_1": "755", "f3_2": "461", "b3_1": "254", "b3_2": "774", "b2": "74"}, {"year": "2556", "date": "1 มีนาคม 2556", "p1": "243248", "f3_1": "321", "f3_2": "733", "b3_1": "454", "b3_2": "972", "b2": "56"}, {"year": "2556", "date": "16 กุมภาพันธ์ 2556", "p1": "398142", "f3_1": "388", "f3_2": "754", "b3_1": "935", "b3_2": "530", "b2": "29"}, {"year": "2556", "date": "1 กุมภาพันธ์ 2556", "p1": "043381", "f3_1": "865", "f3_2": "097", "b3_1": "448", "b3_2": "544", "b2": "24"}, {"year": "2556", "date": "16 มกราคม 2556", "p1": "593718", "f3_1": "396", "f3_2": "844", "b3_1": "388", "b3_2": "680", "b2": "05"}, {"year": "2555", "date": "30 ธันวาคม 2555", "p1": "517445", "f3_1": "080", "f3_2": "629", "b3_1": "610", "b3_2": "771", "b2": "77"}, {"year": "2555", "date": "16 ธันวาคม 2555", "p1": "258299", "f3_1": "085", "f3_2": "141", "b3_1": "260", "b3_2": "684", "b2": "55"}, {"year": "2555", "date": "1 ธันวาคม 2555", "p1": "109867", "f3_1": "194", "f3_2": "656", "b3_1": "439", "b3_2": "611", "b2": "03"}, {"year": "2555", "date": "16 พฤศจิกายน 2555", "p1": "656461", "f3_1": "120", "f3_2": "283", "b3_1": "660", "b3_2": "859", "b2": "47"}, {"year": "2555", "date": "1 พฤศจิกายน 2555", "p1": "845197", "f3_1": "050", "f3_2": "581", "b3_1": "430", "b3_2": "955", "b2": "05"}, {"year": "2555", "date": "16 ตุลาคม 2555", "p1": "472305", "f3_1": "262", "f3_2": "559", "b3_1": "055", "b3_2": "100", "b2": "48"}, {"year": "2555", "date": "1 ตุลาคม 2555", "p1": "915309", "f3_1": "074", "f3_2": "890", "b3_1": "334", "b3_2": "648", "b2": "15"}, {"year": "2555", "date": "16 กันยายน 2555", "p1": "054359", "f3_1": "528", "f3_2": "592", "b3_1": "291", "b3_2": "732", "b2": "02"}, {"year": "2555", "date": "1 กันยายน 2555", "p1": "553634", "f3_1": "158", "f3_2": "359", "b3_1": "569", "b3_2": "866", "b2": "90"}, {"year": "2555", "date": "16 สิงหาคม 2555", "p1": "933611", "f3_1": "228", "f3_2": "529", "b3_1": "370", "b3_2": "771", "b2": "29"}, {"year": "2555", "date": "1 สิงหาคม 2555", "p1": "577317", "f3_1": "233", "f3_2": "384", "b3_1": "610", "b3_2": "875", "b2": "49"}, {"year": "2555", "date": "16 กรกฎาคม 2555", "p1": "352358", "f3_1": "203", "f3_2": "691", "b3_1": "119", "b3_2": "835", "b2": "09"}, {"year": "2555", "date": "1 กรกฎาคม 2555", "p1": "193130", "f3_1": "119", "f3_2": "331", "b3_1": "505", "b3_2": "942", "b2": "19"}, {"year": "2555", "date": "16 มิถุนายน 2555", "p1": "208755", "f3_1": "131", "f3_2": "855", "b3_1": "249", "b3_2": "388", "b2": "28"}, {"year": "2555", "date": "1 มิถุนายน 2555", "p1": "524694", "f3_1": "190", "f3_2": "622", "b3_1": "488", "b3_2": "790", "b2": "63"}, {"year": "2555", "date": "16 พฤษภาคม 2555", "p1": "381440", "f3_1": "276", "f3_2": "824", "b3_1": "234", "b3_2": "690", "b2": "68"}, {"year": "2555", "date": "2 พฤษภาคม 2555", "p1": "421118", "f3_1": "469", "f3_2": "876", "b3_1": "029", "b3_2": "636", "b2": "31"}, {"year": "2555", "date": "16 เมษายน 2555", "p1": "948332", "f3_1": "085", "f3_2": "893", "b3_1": "581", "b3_2": "959", "b2": "01"}, {"year": "2555", "date": "1 เมษายน 2555", "p1": "115752", "f3_1": "334", "f3_2": "713", "b3_1": "191", "b3_2": "603", "b2": "34"}, {"year": "2555", "date": "16 มีนาคม 2555", "p1": "897097", "f3_1": "217", "f3_2": "304", "b3_1": "385", "b3_2": "522", "b2": "92"}, {"year": "2555", "date": "1 มีนาคม 2555", "p1": "452631", "f3_1": "203", "f3_2": "260", "b3_1": "409", "b3_2": "912", "b2": "00"}, {"year": "2555", "date": "16 กุมภาพันธ์ 2555", "p1": "537380", "f3_1": "213", "f3_2": "916", "b3_1": "291", "b3_2": "488", "b2": "99"}, {"year": "2555", "date": "1 กุมภาพันธ์ 2555", "p1": "848834", "f3_1": "074", "f3_2": "595", "b3_1": "383", "b3_2": "534", "b2": "15"}, {"year": "2555", "date": "17 มกราคม 2555", "p1": "046559", "f3_1": "293", "f3_2": "692", "b3_1": "321", "b3_2": "944", "b2": "02"}, {"year": "2554", "date": "30 ธันวาคม 2554", "p1": "293958", "f3_1": "446", "f3_2": "055", "b3_1": "593", "b3_2": "236", "b2": "80"}, {"year": "2554", "date": "16 ธันวาคม 2554", "p1": "269088", "f3_1": "313", "f3_2": "612", "b3_1": "873", "b3_2": "488", "b2": "09"}, {"year": "2554", "date": "16 พฤศจิกายน 2554", "p1": "419405", "f3_1": "218", "f3_2": "073", "b3_1": "264", "b3_2": "802", "b2": "97"}, {"year": "2554", "date": "1 พฤศจิกายน 2554", "p1": "298522", "f3_1": "134", "f3_2": "365", "b3_1": "099", "b3_2": "132", "b2": "94"}, {"year": "2554", "date": "16 ตุลาคม 2554", "p1": "743569", "f3_1": "162", "f3_2": "291", "b3_1": "840", "b3_2": "930", "b2": "10"}, {"year": "2554", "date": "1 ตุลาคม 2554", "p1": "100293", "f3_1": "580", "f3_2": "403", "b3_1": "304", "b3_2": "347", "b2": "99"}, {"year": "2554", "date": "16 กันยายน 2554", "p1": "596958", "f3_1": "921", "f3_2": "718", "b3_1": "752", "b3_2": "807", "b2": "21"}, {"year": "2554", "date": "1 กันยายน 2554", "p1": "766756", "f3_1": "676", "f3_2": "923", "b3_1": "242", "b3_2": "186", "b2": "55"}, {"year": "2554", "date": "16 สิงหาคม 2554", "p1": "605218", "f3_1": "020", "f3_2": "588", "b3_1": "259", "b3_2": "701", "b2": "92"}, {"year": "2554", "date": "1 สิงหาคม 2554", "p1": "486525", "f3_1": "513", "f3_2": "674", "b3_1": "177", "b3_2": "050", "b2": "69"}, {"year": "2554", "date": "16 กรกฎาคม 2554", "p1": "216353", "f3_1": "354", "f3_2": "750", "b3_1": "212", "b3_2": "837", "b2": "97"}, {"year": "2554", "date": "1 กรกฎาคม 2554", "p1": "464766", "f3_1": "610", "f3_2": "509", "b3_1": "351", "b3_2": "412", "b2": "55"}, {"year": "2554", "date": "16 มิถุนายน 2554", "p1": "291123", "f3_1": "047", "f3_2": "642", "b3_1": "637", "b3_2": "049", "b2": "73"}, {"year": "2554", "date": "1 มิถุนายน 2554", "p1": "552468", "f3_1": "122", "f3_2": "050", "b3_1": "370", "b3_2": "256", "b2": "96"}, {"year": "2554", "date": "16 พฤษภาคม 2554", "p1": "474432", "f3_1": "710", "f3_2": "614", "b3_1": "026", "b3_2": "638", "b2": "05"}, {"year": "2554", "date": "1 พฤษภาคม 2554", "p1": "785068", "f3_1": "158", "f3_2": "048", "b3_1": "859", "b3_2": "429", "b2": "50"}, {"year": "2554", "date": "16 เมษายน 2554", "p1": "426193", "f3_1": "769", "f3_2": "617", "b3_1": "697", "b3_2": "882", "b2": "06"}, {"year": "2554", "date": "1 เมษายน 2554", "p1": "470466", "f3_1": "255", "f3_2": "325", "b3_1": "916", "b3_2": "301", "b2": "25"}, {"year": "2554", "date": "16 มีนาคม 2554", "p1": "291502", "f3_1": "544", "f3_2": "004", "b3_1": "394", "b3_2": "140", "b2": "58"}, {"year": "2554", "date": "1 มีนาคม 2554", "p1": "669100", "f3_1": "052", "f3_2": "787", "b3_1": "266", "b3_2": "840", "b2": "47"}, {"year": "2554", "date": "16 กุมภาพันธ์ 2554", "p1": "917291", "f3_1": "988", "f3_2": "608", "b3_1": "962", "b3_2": "911", "b2": "70"}, {"year": "2554", "date": "1 กุมภาพันธ์ 2554", "p1": "413918", "f3_1": "833", "f3_2": "559", "b3_1": "725", "b3_2": "229", "b2": "47"}, {"year": "2554", "date": "16 มกราคม 2554", "p1": "032086", "f3_1": "619", "f3_2": "699", "b3_1": "888", "b3_2": "899", "b2": "86"}, {"year": "2554", "date": "1 มกราคม 2554", "p1": "176555", "f3_1": "710", "f3_2": "503", "b3_1": "595", "b3_2": "198", "b2": "32"}];
+        let currentDisplayData = [];
+
+        const thaiMonths = {
+            1: 'ม.ค.', 2: 'ก.พ.', 3: 'มี.ค.', 4: 'เม.ย.', 5: 'พ.ค.', 6: 'มิ.ย.',
+            7: 'ก.ค.', 8: 'ส.ค.', 9: 'ก.ย.', 10: 'ต.ค.', 11: 'พ.ย.', 12: 'ธ.ค.'
+        };
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            document.getElementById('btn-' + tabId).classList.add('active');
+        }
+
+        // เซ็ตอัป Dropdown รายปี
+        function setupYearDropdown() {
+            if (masterLotteryData.length === 0) return;
+            const years = [...new Set(masterLotteryData.map(d => parseInt(d.year)))].sort((a, b) => b - a);
+            const select = document.getElementById('specific-year-filter');
+            select.innerHTML = '<option value="all">รวมทุกปีที่เลือกซ้ายมือ</option>';
+            years.forEach(y => {
+                select.innerHTML += `<option value="${y}">เฉพาะปี ${y}</option>`;
+            });
+        }
+
+        // ฟิลเตอร์ข้อมูลตามจำนวนปี หรือ รายปี
+        function applyFilter() {
+            const selectedYears = parseInt(document.getElementById('time-filter').value);
+            const specificYear = document.getElementById('specific-year-filter').value;
+            
+            if (masterLotteryData.length === 0) return;
+
+            if (specificYear !== 'all') {
+                // หากเลือกเจาะจงปี
+                currentDisplayData = masterLotteryData.filter(d => d.year === specificYear);
+            } else {
+                // หากเลือกตามจำนวนปี
+                const currentYear = Math.max(...masterLotteryData.map(d => parseInt(d.year)));
+                const cutoffYear = currentYear - selectedYears + 1;
+                currentDisplayData = masterLotteryData.filter(d => parseInt(d.year) >= cutoffYear);
+            }
+            
+            updateAllViews();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('data-tbody');
+            tbody.innerHTML = '';
+            currentDisplayData.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${row.year}</td><td>${row.date}</td><td class="font-bold text-blue-600">${row.p1}</td>
+                                <td>${row.f3_1}</td><td>${row.f3_2}</td><td>${row.b3_1}</td><td>${row.b3_2}</td>
+                                <td class="font-bold text-green-600">${row.b2}</td>`;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('record-count').innerText = `แสดงผลรวม ${currentDisplayData.length} งวด`;
+        }
+
+        function parseInputToDate(rawDate, thaiYearStr) {
+            let parts = rawDate.replace('-', '/').split('/');
+            if (parts.length < 2) return null;
+            let day = parseInt(parts[0]);
+            let month = parseInt(parts[1]);
+            let gregorianYear = parseInt(thaiYearStr) - 543;
+            
+            if (isNaN(day) || isNaN(month) || isNaN(gregorianYear)) return null;
+            
+            // สร้าง Date Object ของข้อมูลที่กรอก
+            let inputDate = new Date(gregorianYear, month - 1, day);
+            return { dateObj: inputDate, day, month };
+        }
+
+        function isFutureDate(dateObj) {
+            let today = new Date();
+            today.setHours(0,0,0,0); // รีเซ็ตเวลาปัจจุบันให้เป็นเที่ยงคืนเพื่อเทียบแค่วันที่
+            return dateObj > today;
+        }
+
+        function formatInputDate(day, month, yearStr) {
+            if (thaiMonths[month]) {
+                return `${day}/${thaiMonths[month]}/${yearStr}`;
+            }
+            return `${day}/${month}/${yearStr}`;
+        }
+
+        function addEntry() {
+            const year = document.getElementById('in-year').value.trim();
+            const rawDate = document.getElementById('in-date').value.trim();
+            const p1 = document.getElementById('in-p1').value.trim();
+            const b2 = document.getElementById('in-b2').value.trim();
+            
+            if(!year || !rawDate || !p1 || !b2) {
+                alert('กรุณากรอกข้อมูลให้ครบอย่างน้อย (ปี, วันที่, รางวัลที่ 1, ท้าย 2 ตัว)');
+                return;
+            }
+
+            // ตรวจสอบวันที่อนาคต (Validation)
+            const parsed = parseInputToDate(rawDate, year);
+            if (!parsed) {
+                alert('รูปแบบวันที่ไม่ถูกต้อง กรุณาใช้รูปแบบ วัน/เดือน หรือ วัน-เดือน เช่น 16-11');
+                return;
+            }
+
+            if (isFutureDate(parsed.dateObj)) {
+                alert('ข้อผิดพลาด: ไม่อนุญาตให้เพิ่มผลสลากที่เกินวันที่ปัจจุบัน (ป้องกันการใส่ข้อมูลล่วงหน้า)');
+                return;
+            }
+
+            const newEntry = {
+                year: year,
+                date: formatInputDate(parsed.day, parsed.month, year),
+                p1: p1,
+                f3_1: document.getElementById('in-f3-1').value.trim() || '-',
+                f3_2: document.getElementById('in-f3-2').value.trim() || '-',
+                b3_1: document.getElementById('in-b3-1').value.trim() || '-',
+                b3_2: document.getElementById('in-b3-2').value.trim() || '-',
+                b2: b2
+            };
+
+            masterLotteryData.unshift(newEntry);
+            
+            // รีเซ็ต dropdown ปีใหม่เผื่อมีปีใหม่เพิ่มเข้ามา
+            setupYearDropdown();
+            
+            document.querySelectorAll('input').forEach(input => {
+                if(input.id !== 'in-year') input.value = '';
+            });
+
+            // กลับไปใช้ Filter ของ "ช่วงเวลา" เป็นหลัก (รีเซ็ต Specific Year)
+            document.getElementById('specific-year-filter').value = 'all';
+            applyFilter();
+            
+            alert('บันทึกข้อมูลสำเร็จ สถิติทั้งหมดถูกอัปเดตเรียบร้อย!');
+        }
+
+        function getFrequencies(arr) {
+            let counts = {};
+            arr.forEach(val => {
+                if(val && val !== '-' && val.length > 0) {
+                    counts[val] = (counts[val] || 0) + 1;
+                }
+            });
+            return Object.entries(counts)
+                .map(([num, freq]) => ({num, freq}))
+                .sort((a, b) => b.freq - a.freq || a.num.localeCompare(b.num));
+        }
+
+        function renderStatTable(elementId, freqData, limit = 50) {
+            const tbody = document.getElementById(elementId);
+            tbody.innerHTML = '<tr><th class="bg-gray-100 text-gray-700 w-12 sm:w-16">อันดับ</th><th class="bg-gray-100 text-gray-700">ตัวเลข</th><th class="bg-gray-100 text-gray-700">ความถี่</th></tr>';
+            freqData.slice(0, limit).forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${index + 1}</td><td class="font-bold text-gray-800">${item.num}</td><td class="text-blue-600">${item.freq}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateAllViews() {
+            renderTable();
+
+            let p1_f2 = [], p1_f3 = [], p1_b2 = [], p1_b3 = [];
+            let f3 = [], b3 = [], b2 = [];
+
+            currentDisplayData.forEach(d => {
+                if(d.p1 && d.p1.length === 6) {
+                    p1_f2.push(d.p1.substring(0, 2));
+                    p1_f3.push(d.p1.substring(0, 3));
+                    p1_b2.push(d.p1.substring(4, 6));
+                    p1_b3.push(d.p1.substring(3, 6));
+                }
+                f3.push(d.f3_1, d.f3_2);
+                b3.push(d.b3_1, d.b3_2);
+                b2.push(d.b2);
+            });
+
+            const freq_p1_f2 = getFrequencies(p1_f2);
+            const freq_p1_f3 = getFrequencies(p1_f3);
+            const freq_p1_b2 = getFrequencies(p1_b2);
+            const freq_p1_b3 = getFrequencies(p1_b3);
+            const freq_f3 = getFrequencies(f3);
+            const freq_b3 = getFrequencies(b3);
+            const freq_b2 = getFrequencies(b2);
+
+            renderStatTable('stat-p1-f2', freq_p1_f2);
+            renderStatTable('stat-p1-f3', freq_p1_f3);
+            renderStatTable('stat-p1-b2', freq_p1_b2);
+            renderStatTable('stat-p1-b3', freq_p1_b3);
+
+            renderStatTable('stat-f3', freq_f3);
+            renderStatTable('stat-b3', freq_b3);
+            renderStatTable('stat-b2', freq_b2);
+
+            const getTop3 = (arr) => arr.slice(0, 3).map(i => i.num).join(', ') || '-';
+            
+            document.getElementById('dash-p1-f2').innerText = getTop3(freq_p1_f2);
+            document.getElementById('dash-p1-b2').innerText = getTop3(freq_p1_b2);
+            document.getElementById('dash-f3').innerText = getTop3(freq_f3);
+            document.getElementById('dash-b3').innerText = getTop3(freq_b3);
+            document.getElementById('dash-b2').innerText = getTop3(freq_b2);
+        }
+
+        // Initialize
+        window.onload = () => {
+            setupYearDropdown();
+            applyFilter();
+        };
+    </script>
+</body>
+</html>
